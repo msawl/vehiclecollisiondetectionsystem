@@ -1,0 +1,298 @@
+C51 COMPILER V9.50a   LCD                                                                  12/18/2012 14:57:47 PAGE 1   
+
+
+C51 COMPILER V9.50a, COMPILATION OF MODULE LCD
+OBJECT MODULE PLACED IN lcd.OBJ
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE lcd.c BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          /* Basic program to show latitude and longitude on LCD extracted from GPGGA statement */
+   2           
+   3          #include<reg51.h>
+   4          #define port2 P2
+   5          sbit rs = P1^0;
+   6          sbit rw = P1^1;
+   7          sbit e = P1^2;
+   8          sbit button1 = P0^2;
+   9          char info[70];
+  10          char test[6]={"$GPGGA"};
+  11          char comma_position[15];
+  12          unsigned int check=0,i;
+  13          unsigned char a;
+  14          void receive_data();
+  15          void lcd_latitude();
+  16          void lcd_longitude();
+  17          void transmit();
+  18          unsigned char storelat[12];
+  19          unsigned char storelon[1];
+  20          void retrive();
+  21          
+  22          int z;
+  23          
+  24          
+  25           
+  26          //DELAY FUNCTION
+  27          void delay(unsigned int msec)
+  28          {
+  29   1        int i,j ;
+  30   1        for(i=0;i<msec;i++)
+  31   1        for(j=0;j<1275;j++); 
+  32   1      }
+  33           
+  34          // LCD COMMAND SENDING FUNCTION
+  35          void lcd_cmd(unsigned char item)
+  36          {
+  37   1        port2 = item;
+  38   1        rs= 0;
+  39   1        rw=0;
+  40   1        e=1;
+  41   1        delay(1);
+  42   1        e=0;
+  43   1        return;
+  44   1      } 
+  45           
+  46          // LCD DATA SENDING FUNCTION
+  47          void lcd_data(unsigned char item)
+  48          {
+  49   1        port2 = item;
+  50   1        rs= 1;
+  51   1        rw=0;
+  52   1        e=1;
+  53   1        delay(1);
+  54   1        e=0;          
+  55   1        return;
+C51 COMPILER V9.50a   LCD                                                                  12/18/2012 14:57:47 PAGE 2   
+
+  56   1      }
+  57           
+  58           // LCD STRING SENDING FUNCTION 
+  59          void lcd_string(unsigned char *str)
+  60          {
+  61   1        int i=0;
+  62   1        while(str[i]!='\0')
+  63   1        {
+  64   2              lcd_data(str[i]);
+  65   2              i++;
+  66   2              delay(10);
+  67   2              }
+  68   1              return;
+  69   1      }
+  70           
+  71          // SERIAL PORT SETTING
+  72          void serial()
+  73          {
+  74   1        TMOD=0x20;      //MODE=2
+  75   1        TH1=0xFD;      // 9600 BAUD
+  76   1        SCON=0x50  ;    // SERIAL MODE 1 ,8- BIT DATA ,1 STOP BIT ,1 START BIT , RECEIVING ON
+  77   1        TR1=1;           //TIMER START
+  78   1      }
+  79           
+  80          void find_comma()
+  81          {
+  82   1        unsigned int i,count=0;
+  83   1        for(i=0;i<70;i++)
+  84   1        { 
+  85   2          if(info[i]==',')
+  86   2          {
+  87   3            comma_position[count++]=i;
+  88   3          }
+  89   2               }
+  90   1      }
+  91          
+  92          void transmit(unsigned char x)
+  93          {
+  94   1        SBUF=x;
+  95   1        while(TI==0);
+  96   1        TI=0;
+  97   1      }
+  98              
+  99          void compare()
+ 100          {  
+ 101   1        IE=0x00;         //Interrupt disable 
+ 102   1        find_comma();   //Function to detect position of comma in the string
+ 103   1        retrive();
+ 104   1        
+ 105   1        if(button1==0)
+ 106   1          
+ 107   1        {
+ 108   2          
+ 109   2          transmit('A');
+ 110   2          transmit('T');
+ 111   2          transmit(0x0D);
+ 112   2          delay(300);
+ 113   2          transmit('A');
+ 114   2          transmit('T');
+ 115   2          transmit('+');
+ 116   2          transmit('C');
+ 117   2          transmit('M');
+C51 COMPILER V9.50a   LCD                                                                  12/18/2012 14:57:47 PAGE 3   
+
+ 118   2          transmit('G');
+ 119   2          transmit('F');
+ 120   2          transmit('=');
+ 121   2          transmit('1');
+ 122   2          transmit(0x0D);
+ 123   2          transmit('A');
+ 124   2          transmit('T');
+ 125   2          transmit('+');
+ 126   2          transmit('C');
+ 127   2          transmit('M');
+ 128   2          transmit('G');
+ 129   2          transmit('S');
+ 130   2          transmit('=');
+ 131   2          transmit('"');
+ 132   2          transmit('0');
+ 133   2          transmit('9');
+ 134   2          transmit('7');
+ 135   2          transmit('6');
+ 136   2          transmit('8');
+ 137   2          transmit('4');
+ 138   2          transmit('7');
+ 139   2          transmit('3');
+ 140   2          transmit('6');
+ 141   2          transmit('2');
+ 142   2          transmit('6');
+ 143   2          transmit('"');
+ 144   2          transmit(0x0D);
+ 145   2          delay(300);
+ 146   2          
+ 147   2          transmit('L');
+ 148   2          transmit('A');
+ 149   2          transmit('T');
+ 150   2          
+ 151   2          
+ 152   2          
+ 153   2          
+ 154   2          for(z=0;z<12;z++)
+ 155   2          {
+ 156   3          transmit(storelat[z]);
+ 157   3          }
+ 158   2          transmit(' ');
+ 159   2          delay(100);
+ 160   2          transmit('L');
+ 161   2          transmit('O');
+ 162   2          transmit('N');
+ 163   2          for(z=0;z<12;z++)
+ 164   2          {
+ 165   3            transmit(storelon[z]);
+ 166   3          }
+ 167   2          
+ 168   2          transmit(0x1A);
+ 169   2        }
+ 170   1        check=0;
+ 171   1        IE=0x90;       //Interrupt enable
+ 172   1      }
+ 173          void receive_data()      interrupt 4            
+ 174          {
+ 175   1        info[check++]=SBUF;   //Read SBUF
+ 176   1        if(check<7)          //Condition to check the required data
+ 177   1              {
+ 178   2          if(info[check-1]!=test[check-1])
+ 179   2          check=0;
+C51 COMPILER V9.50a   LCD                                                                  12/18/2012 14:57:47 PAGE 4   
+
+ 180   2              }
+ 181   1        RI=0;
+ 182   1      }
+ 183          void lcd_shape()        //Function to create shape of degree
+ 184          {
+ 185   1        lcd_cmd(64);
+ 186   1        lcd_data(10);
+ 187   1        lcd_data(17);
+ 188   1        lcd_data(17);
+ 189   1        lcd_data(10);
+ 190   1        lcd_data(0);
+ 191   1        lcd_data(0);
+ 192   1        lcd_data(0);
+ 193   1        lcd_data(0);
+ 194   1      }
+ 195           
+ 196          void lcd_latitude()    //Function to display Latitude
+ 197          {
+ 198   1        unsigned int c2=comma_position[1]; //Position of second comma
+ 199   1        lcd_shape();
+ 200   1        lcd_cmd(0x01);           // Clear LCD display
+ 201   1        lcd_cmd(0x80);           //Move cursor to position 6 of line 1
+ 202   1        lcd_string("LAT");   //Showing Latitude
+ 203   1         
+ 204   1        lcd_data(info[c2+1]); 
+ 205   1        lcd_data(info[c2+2]);
+ 206   1        lcd_data(0);       //Degree symbol
+ 207   1        lcd_data(info[c2+3]); 
+ 208   1        lcd_data(info[c2+4]);
+ 209   1        lcd_data(info[c2+5]);
+ 210   1        lcd_data(info[c2+6]);
+ 211   1        lcd_data(info[c2+7]);
+ 212   1        lcd_data(info[c2+8]);
+ 213   1        lcd_data(info[c2+9]);
+ 214   1        lcd_data(0x27);          //ASCII of minute sign(')
+ 215   1        lcd_data(info[c2+10]);
+ 216   1        lcd_data(info[c2+11]);
+ 217   1        
+ 218   1      } 
+ 219          
+ 220          void retrive()
+ 221          {
+ 222   1        unsigned int c2=comma_position[1];
+ 223   1        unsigned int c4=comma_position[3];  
+ 224   1        for (z=0;z<12;z++)
+ 225   1        {
+ 226   2          storelat[z]=info[c2+z];
+ 227   2          storelon[z]=info[c4+z];
+ 228   2      }
+ 229   1      }
+ 230           
+ 231          void lcd_longitude()
+ 232          {
+ 233   1        unsigned int c4=comma_position[3];
+ 234   1        
+ 235   1        lcd_cmd(0xC0);          //Begining of second line  
+ 236   1        lcd_string("LON");    //Showing Longitude
+ 237   1        
+ 238   1        
+ 239   1        lcd_data(info[c4+1]);
+ 240   1        lcd_data(info[c4+2]);
+ 241   1        lcd_data(info[c4+3]);
+C51 COMPILER V9.50a   LCD                                                                  12/18/2012 14:57:47 PAGE 5   
+
+ 242   1        lcd_data(0);
+ 243   1        lcd_data(info[c4+4]);
+ 244   1        lcd_data(info[c4+5]);
+ 245   1        lcd_data(info[c4+6]);
+ 246   1        lcd_data(info[c4+7]);
+ 247   1        lcd_data(info[c4+8]);
+ 248   1        lcd_data(info[c4+9]);
+ 249   1        lcd_data(info[c4+10]);
+ 250   1        lcd_data(0x27);               //ASCII of minute sign(')
+ 251   1        lcd_data(info[c4+11]);
+ 252   1        lcd_data(info[c4+12]);
+ 253   1        delay(250);
+ 254   1      }
+ 255          
+ 256          void main()
+ 257          {
+ 258   1        serial();
+ 259   1        lcd_cmd(0x38);          //2 LINE, 5X7 MATRIX
+ 260   1        lcd_cmd(0x0e);         //DISPLAY ON, CURSOR BLINKING
+ 261   1        IE=0x90;
+ 262   1        while(1)
+ 263   1        {
+ 264   2          if(check==69)
+ 265   2          compare();
+ 266   2        }
+ 267   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    931    ----
+   CONSTANT SIZE    =      8    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =    111       9
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
